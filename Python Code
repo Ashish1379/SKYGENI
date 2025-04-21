@@ -1,0 +1,106 @@
+#python code
+
+import pandas as pd
+import sqlite3
+finance_file = pd.read_csv('finanical_information.csv')
+industry_file = pd.read_csv('industry_client_details.csv')
+payment_file = pd.read_csv('payment_information.csv')
+subscription_file = pd.read_csv('subscription_information.csv')
+#preproceesing and finding is their any null or missing values or duplicate client id in any of the file
+null_value1 = finance_file.isnull().sum()
+null_value2 = industry_file.isnull().sum()
+null_value4 = payment_file.isnull().sum()
+null_value3 = subscription_file.isnull().sum()
+print(null_value1)
+print(null_value2)
+print(null_value3)
+print(null_value4)
+
+# checking for duplicates for client_id in all files except finance_file
+duplicate1 = industry_file['client_id'].duplicated().sum()
+duplicate2 = payment_file['client_id'].duplicated().sum()
+duplicate3 = subscription_file['client_id'].duplicated().sum()
+print(duplicate1)
+print(duplicate2)
+print(duplicate3)
+
+# 1. How many finance lending and blockchain clients does the organization have? -->
+
+# Using sql query for finding how many finance lending and blockchain clients does the organization have
+#for using sql query we need to import sqlite3 package
+temp_db = sqlite3.connect(':memory:') #creating a temporary databse to store dataframe into sql table for running query
+
+industry_file.to_sql( 'industry_file' , temp_db , index = False , if_exists = 'replace')
+
+query = "select industry , count(client_id) as No_of_clients from industry_file where industry in" \
+        "('Finance Lending' , 'Block Chain') group by industry"
+
+answer1 = pd.read_sql_query(query , temp_db)
+
+total = industry_file[
+    industry_file['industry'].isin(['Finance Lending', 'Block Chain'])
+]
+
+total = total['client_id'].nunique() # Count number of unique clients 
+
+print(answer1 ) # Number of clients from each industry seperate
+print("Total Clients: " ,total)    # Total number of clients from both industry
+
+
+
+# 2. Which industry in the organization has the highest renewal rate? -->
+
+# using pandas for merging csv files and applying funcrtions 
+
+merged_file = pd.merge(subscription_file, industry_file, on='client_id') # Merging subscription with industry file
+
+renew_rate = merged_file.groupby('industry')['renewed'].mean() # group by industry and calculate average or mean renewed rate
+
+
+highest_industry = renew_rate.idxmax() # accessing index with highest renewal rate
+rate = renew_rate.max() #
+
+print("Industry with highest renewal rate is : ")
+print( highest_industry ,"with ", "{:.2f}".format(rate*100) , "% of rate" , )
+
+
+
+
+# 3. What was the average inflation rate when their subscriptions were renewed?-->
+
+# convert dates to datetime format 
+subscription_file['end_date'] = pd.to_datetime(subscription_file['end_date'])
+finance_file['start_date'] = pd.to_datetime(finance_file['start_date'])
+finance_file['end_date'] = pd.to_datetime(finance_file['end_date'])
+
+
+renewed_subs = subscription_file[subscription_file['renewed'] == True] # filter only renewed subscriptions
+
+# define a function to get inflation rate based on date
+def get_inflation_for_date(date):
+    row = finance_file[
+        (finance_file['start_date'] <= date) & 
+        (finance_file['end_date'] >= date)
+    ]
+    if not row.empty:
+        return row['inflation_rate'].values[0]
+    return None
+
+renewed_subs['inflation_rate'] = renewed_subs['end_date'].apply(get_inflation_for_date)
+
+average_inflation = renewed_subs['inflation_rate'].mean() # Calculate the average using mean function
+
+print(average_inflation)
+
+
+# 4. What is the median amount paid each year for all payment methods? -->
+
+payment_file['payment_date'] = pd.to_datetime(payment_file['payment_date']) # Convert payment_date to datetime
+payment_file['year'] = payment_file['payment_date'].dt.year # extracting year from the payment_file
+
+
+median_payments = payment_file.groupby(['year','payment_method'])['amount_paid'].median() # Group by year and then payment method and calculate median amount paid
+
+print(median_payments)
+
+

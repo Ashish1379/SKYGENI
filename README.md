@@ -5,4 +5,4 @@ First file naming "Answers" are having answer of all 4 questions
 
 Second file naming "Python code" contains code in pyhton
 
-bottom four file "ScreenShots" are having screen shots of answers as well as code implemented on vs-code IDE for all 4 questions
+Folder naming "ScreenShots" are having screen shots of answers as well as code implemented on vs-code IDE for all 4 questions along with data preprocessing.
